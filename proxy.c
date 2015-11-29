@@ -31,12 +31,23 @@ void Rio_writen_w(int fd, void *usrbuf, size_t n);
  */
 int main(int argc, char **argv)
 {
+    int port, listenfd;
+    FILE *log_file;
+    
     /* Check arguments */
     if (argc != 2) {
         fprintf(stderr, "Usage: %s <port number>\n", argv[0]);
         exit(0);
     }
-
+    
+    port = atoi(argv[1]);
+    
+    if ((listenfd=open_listenfd(port))==-1){
+        unix_error("Error in listening");
+    }
+    
+    log_file = fopen(PROXY_LOG, "a");
+    
     exit(0);
 }
 
@@ -55,6 +66,7 @@ int open_clientfd_ts(char *hostname, int port)
 }
 
 /*-----------Wrappers for robust I/O routines rewritten---------*/
+
 ssize_t Rio_readn_w(int fd, void *ptr, size_t nbytes)
 {
     ssize_t n;
@@ -62,21 +74,6 @@ ssize_t Rio_readn_w(int fd, void *ptr, size_t nbytes)
     if ((n = rio_readn(fd, ptr, nbytes)) < 0)
     printf("Rio_readn error");
     return n;
-}
-
-void Rio_writen_w(int fd, void *usrbuf, size_t n)
-{
-    if (rio_writen(fd, usrbuf, n) != n)
-    printf("Rio_writen error");
-}
-
-ssize_t Rio_readnb_w(rio_t *rp, void *usrbuf, size_t n)
-{
-    ssize_t rc;
-
-    if ((rc = rio_readnb(rp, usrbuf, n)) < 0)
-    printf("Rio_readnb error");
-    return rc;
 }
 
 ssize_t Rio_readlineb_w(rio_t *rp, void *usrbuf, size_t maxlen)
@@ -87,3 +84,11 @@ ssize_t Rio_readlineb_w(rio_t *rp, void *usrbuf, size_t maxlen)
     printf("Rio_readlineb error");
     return rc;
 }
+
+void Rio_writen_w(int fd, void *usrbuf, size_t n)
+{
+    if (rio_writen(fd, usrbuf, n) != n)
+    printf("Rio_writen error");
+}
+
+
