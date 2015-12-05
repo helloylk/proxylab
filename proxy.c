@@ -178,8 +178,7 @@ int parse_uri(char *uri, char *hostname, char *pathname, int *port)
  *    because inet ntoa is a thread-unsafe function
  * 3. Get clientport, size, echostring
  */
-void format_log_entry(char *logstring, struct sockaddr_in *sockaddr,
-		      char *uri, int size)
+void log_entry(char *logstring, struct sockaddr_in *sockaddr, int size)
 {
     time_t now;
     char time_str[MAXLINE];
@@ -197,7 +196,7 @@ void format_log_entry(char *logstring, struct sockaddr_in *sockaddr,
     c = (host >> 8) & 0xff;
     d = host & 0xff;
 
-    sprintf(logstring, "%s: %d.%d.%d.%d %d %s\n", time_str, a, b, c, d, size, uri);
+    sprintf(logstring, "%s: %d.%d.%d.%d %d %d %s\n", time_str, a, b, c, d, port, size, echostring);
 }
 
 /*
@@ -206,7 +205,7 @@ void format_log_entry(char *logstring, struct sockaddr_in *sockaddr,
 void print_log(struct sockaddr_in *sockaddr, char *uri, int size)
 {
     char *logstring[MAXLINE];
-    format_log_entry(logstring, sockaddr, uri, size);
+    log_entry(logstring, sockaddr, uri, size);
     P(&sem_log);
     fprintf(PROXY_LOG, logstring);
     fflush(PROXY_LOG);
