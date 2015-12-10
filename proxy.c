@@ -86,7 +86,12 @@ int main(int argc, char **argv)
  *
  */
 void *process_request(void* vargp){
-	
+   int connfd = *(int*)*(void*)vargp;
+   struct sockaddr_in *clientaddr = (struct sockaddr_in *)(connargs + sizeof(int));
+   free(vargp);
+   Pthread_detach(Pthread_self());
+   
+   size
 }
 
 /*
