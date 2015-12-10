@@ -41,6 +41,8 @@ int main(int argc, char **argv)
 {
     int port, listenfd;
     FILE *log_file;
+    int *connfd;
+    void *vargp;
     
     /* Check arguments */
     if (argc != 2) {
@@ -48,21 +50,48 @@ int main(int argc, char **argv)
         exit(0);
     }
     
+    /* Prepare samaphore */
+    sem_init(&sem, 0, 1);
+    sem_init(&sem_log, 0, 1);
+    
     port = atoi(argv[1]);
     
-    if ((listenfd=open_listenfd(port))==-1){
-        unix_error("Error in listening");
-    }
+    if ((listenfd=open_listenfd(port))==-1) unix_error("Listenfd Error");
     
     log_file = fopen(PROXY_LOG, "a");
     
+    while(1){
+    	/* Malloc variables for thread-safety */
+    	vargp = Malloc(2*sizeof(void *));
+    	connfd = Malloc(sizeof(int));
+        *connfd = Accept(listenfd, (SA *)&clientaddr, &clientlen);
+
+        /* Prepare one vargs as an argument for Pthread_create */
+        vargp[0] = connfd;
+        vargp[1] = &clientaddr;
+        printf("initial connfd %d at address %p\n", *connfd, connfd);
+
+        /* Get the client's network information */
+        hp = Gethostbyaddr((const char *)&clientaddr.sin_addr.s_addr,
+          sizeof(clientaddr.sin_addr.s_addr), AF_INET);
+        client_ip = inet_ntoa(clientaddr.sin_addr);
+        printf("Client connected to %s (%s)\n", hp->h_name, client_ip);
+        Pthread_create(&tid, NULL, process_request, (void *)vargp); 
+    }
     exit(0);
 }
 
+/*
+ * process_request - thread routine
+ *
+ */
+void *process_request(void* vargp){
+	
+}
 
 /*
  * open_clientdf_ts - wrapper function for Open_clientfd
- * Use semaphore and cell Open_clientfd,
+ * Use semaphore and call Open_clientfd,
  * to make it thread safe
  */
 int open_clientfd_ts(char *hostname, int port, sem_t *mutexp)
