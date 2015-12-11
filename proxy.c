@@ -42,11 +42,11 @@ void print_log(struct sockaddr_in *sockaddr, char *uri, int size);
 int main(int argc, char **argv)
 {
     int port, listenfd;
-    FILE *log_file;
     int *connfd;
     void **vargp;
     struct sockaddr_in clientaddr;
     int clientlen=sizeof(clientaddr);
+    struct hostent *hp
     	
     /* Check arguments */
     if (argc != 2) {
@@ -86,7 +86,7 @@ int main(int argc, char **argv)
           sizeof(clientaddr.sin_addr.s_addr), AF_INET);
         client_ip = inet_ntoa(clientaddr.sin_addr);
         client_port = ntohs(clientaddr.sin_port);
-        printf("Client connected to %s (%s)\n", hp->h_name, client_ip);
+        printf("Client connected to %s (%s), port: %d\n", hp->h_name, client_ip, client_port);
         Pthread_create(&tid, NULL, process_request, (void *)vargp); 
     }
     exit(0);
@@ -114,8 +114,7 @@ void *process_request(void* vargp){
    /* Get argm from client command */
    token = strtok(buf, " ");
    while (token != NULL) {
-	switch (cnt++)
-	{
+	switch (cnt++){
 		case 0:
 	        strcpy(hostname, token);
 	        break;
@@ -127,7 +126,7 @@ void *process_request(void* vargp){
   }
    
    // after a successful request, connect to the server
-   if ((serverfd = open_clientfd_ts(hostname, port)) < 0){
+   if ((serverfd = open_clientfd_ts(hostname, port, sem)) < 0){
    	perror("Proxy: Server connection error");
    	Close(connfd);
         return NULL;
@@ -135,7 +134,7 @@ void *process_request(void* vargp){
    Rio_readinitb(&rio_server, serverfd);
 
    // Write the initial header to the server
-   sprintf(leadLine, "%s %s", hostname, port);
+   sprintf(leadLine, "%s %d", hostname, port);
    Rio_writen_w(serverfd, leadLine, strlen(leadLine)); 
 
    while((n = Rio_readlineb_w(&rio_client, buf, MAXLINE)) > 0 && buf[0] != '\r' && buf[0] != '\n') {
@@ -148,7 +147,7 @@ void *process_request(void* vargp){
   
   // Read response from server
   cnt=0;
-  while((n = Rio_readnb_w(&rio_server, buf, MAXLINE)) > 0) {
+  while((n = Rio_readn_w(serverfd, buf, MAXLINE)) > 0) {
 	// printf("%s\n", buf);
 	Rio_writen_w(connfd, buf, n);
     	cnt += n;
@@ -170,9 +169,9 @@ int open_clientfd_ts(char *hostname, int port, sem_t *mutexp)
 {
     int result;
     printf("Hostname: %s, port: %d", hostname, port);
-    P(&sem);
+    P(&mutexp);
     result = Open_clientfd(hostname, port);
-    V(&sem);
+    V(&mutexp);
     return result;
 }
 
@@ -218,8 +217,6 @@ ssize_t Rio_readlineb_w(rio_t *rp, void *usrbuf, size_t maxlen)
  */
 void Rio_writen_w(int fd, void *usrbuf, size_t n)
 {
-    ssize_t n;
-    
     if ((n = rio_writen(fd, usrbuf, n)) < 0){
         printf("rio_writen error");
         n=0;
