@@ -23,7 +23,7 @@
 
 /* Global Variable for Semaphore */
 sem_t sem, sem_log;
-FILE *logfile
+FILE *logfile;
 
 /* Functions to define */
 void *process_request(void* vargp);
@@ -215,7 +215,7 @@ ssize_t Rio_readlineb_w(rio_t *rp, void *usrbuf, size_t maxlen)
  */
 void Rio_writen_w(int fd, void *usrbuf, size_t n)
 {
-    size_t=wb;
+    size_t wb;
     if ((wb = rio_writen(fd, usrbuf, n)) < 0){
         printf("rio_writen error");
         n=0;
