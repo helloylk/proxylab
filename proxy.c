@@ -26,7 +26,7 @@ sem_t sem, sem_log;
 
 /* Functions to define */
 void *process_request(void* vargp);
-int open_clientfd_ts(char *hostname, int port, sem_t *mutexp);
+int open_clientfd_ts(char *hostname, int port);
 ssize_t Rio_readn_w(int fd, void *ptr, size_t nbytes);
 ssize_t Rio_readlineb_w(rio_t *rp, void *usrbuf, size_t maxlen);
 void Rio_writen_w(int fd, void *usrbuf, size_t n);
@@ -127,7 +127,7 @@ void *process_request(void* vargp){
   }
    
    // after a successful request, connect to the server
-   if ((serverfd = open_clientfd_ts(hostname, port, *sem)) < 0){
+   if ((serverfd = open_clientfd_ts(hostname, port)) < 0){
    	perror("Proxy: Server connection error");
    	Close(connfd);
         return NULL;
@@ -166,13 +166,13 @@ void *process_request(void* vargp){
  * Use semaphore and call Open_clientfd,
  * to make it thread safe
  */
-int open_clientfd_ts(char *hostname, int port, sem_t *mutexp)
+int open_clientfd_ts(char *hostname, int port)
 {
     int result;
     printf("Hostname: %s, port: %d", hostname, port);
-    P(&mutexp);
+    P(&sem);
     result = Open_clientfd(hostname, port);
-    V(&mutexp);
+    V(&sem);
     return result;
 }
 
