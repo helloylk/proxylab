@@ -32,6 +32,8 @@ ssize_t Rio_readn_w(int fd, void *ptr, size_t nbytes);
 ssize_t Rio_readlineb_w(rio_t *rp, void *usrbuf, size_t maxlen);
 void Rio_writen_w(int fd, void *usrbuf, size_t n);
 
+ssize_t Rio_readnb_w(rio_t *rp, void *usrbuf, size_t n);
+
 /* Helper Function */
 int parse_uri(char *uri, char *hostname, char *pathname, int *port);
 void log_entry(char *logstring, struct sockaddr_in *sockaddr, int size);
@@ -148,7 +150,7 @@ void *process_request(void* vargp){
   
   // Read response from server
   cnt=0;
-  while((n = Rio_readn_w(serverfd, buf, MAXLINE)) > 0) {
+  while((n = Rio_readnb_w(&rio_server, buf, MAXLINE)) > 0) {
 	// printf("%s\n", buf);
 	Rio_writen_w(connfd, buf, n);
     	cnt += n;
@@ -222,6 +224,16 @@ void Rio_writen_w(int fd, void *usrbuf, size_t n)
     }
     return;
 }
+
+ssize_t Rio_readnb_w(rio_t *rp, void *usrbuf, size_t n)
+{
+    ssize_t rc;
+
+    if ((rc = rio_readnb(rp, usrbuf, n)) < 0)
+    printf("Rio_readnb error");
+    return rc;
+}
+
 
 /*---------------------Helper Function--------------------------*/
 /*
