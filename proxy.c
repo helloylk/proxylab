@@ -120,7 +120,7 @@ void *process_request(void* vargp){
 	        strcpy(hostname, token);
 	        break;
 	      	case 1:
-	        strcpy(port, token);
+	        port=atoi(token);
 	        break;
 	 }
     token = strtok(NULL, " ");
@@ -182,8 +182,7 @@ int open_clientfd_ts(char *hostname, int port)
  * Call rio_readn and if there is an error,
  * do not terminate, but print error msg and return 0.
  */
-ssize_t Rio_readn_w(int fd, void *ptr, size_t nbytes)
-{
+ssize_t Rio_readn_w(int fd, void *ptr, size_t nbytes){
     ssize_t n;
 
     if ((n = rio_readn(fd, ptr, nbytes)) < 0){
@@ -191,8 +190,6 @@ ssize_t Rio_readn_w(int fd, void *ptr, size_t nbytes)
     n=0;
     }
     return n;
-    
-    
 }
 
 /*
@@ -218,11 +215,12 @@ ssize_t Rio_readlineb_w(rio_t *rp, void *usrbuf, size_t maxlen)
  */
 void Rio_writen_w(int fd, void *usrbuf, size_t n)
 {
-    if ((n = rio_writen(fd, usrbuf, n)) < 0){
+    size_t=wb;
+    if ((wb = rio_writen(fd, usrbuf, n)) < 0){
         printf("rio_writen error");
         n=0;
     }
-    return n;
+    return;
 }
 
 /*---------------------Helper Function--------------------------*/
@@ -252,7 +250,7 @@ void log_entry(char *logstring, struct sockaddr_in *sockaddr, int size)
     c = (host >> 8) & 0xff;
     d = host & 0xff;
 
-    sprintf(logstring, "%s: %d.%d.%d.%d %d %d %s\n", time_str, a, b, c, d, port, size, echostring);
+    sprintf(logstring, "%s: %d.%d.%d.%d \n", time_str, a, b, c, d);
 }
 
 /*
@@ -263,8 +261,8 @@ void print_log(struct sockaddr_in *sockaddr, int size)
     char *logstring[MAXLINE];
     log_entry(logstring, sockaddr, size);
     P(&sem_log);
-    fprintf(PROXY_LOG, logstring);
-    fflush(PROXY_LOG);
+    fprintf("PROXY_LOG", logstring);
+    fflush("PROXY_LOG");
     V(&sem_log);
 }
 
