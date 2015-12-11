@@ -32,8 +32,6 @@ ssize_t Rio_readn_w(int fd, void *ptr, size_t nbytes);
 ssize_t Rio_readlineb_w(rio_t *rp, void *usrbuf, size_t maxlen);
 void Rio_writen_w(int fd, void *usrbuf, size_t n);
 
-ssize_t Rio_readnb_w(rio_t *rp, void *usrbuf, size_t n);
-
 /* Helper Function */
 void log_entry(char *logstring, struct sockaddr_in *sockaddr, int size, char *echostring);
 void print_log(struct sockaddr_in *sockaddr, int size, char *echostring);
@@ -103,7 +101,6 @@ void *process_request(void* vargp){
    int port, serverfd;
    int n, cnt=0;
    char buf[MAX], hostname[MAX], portarr[MAX], echostring[MAX];
-   char *token;
 	
    int connfd = *(int *)*(void **)vargp;
    struct sockaddr_in *clientaddr = (struct sockaddr_in *)(vargp + sizeof(int));
@@ -134,15 +131,15 @@ void *process_request(void* vargp){
   
    /* Read response from server and write to client */
    cnt=0;
-   n = Rio_readlineb_w(&rio_server, echostring, MAXLINE)) > 0
+   n = Rio_readlineb_w(&rio_server, echostring, MAXLINE);
 	Rio_writen_w(connfd, echostring, n);
     	cnt += n;
     	
-   /* Close all openfile and print log */
+   /* Close serverfd and print log */
    Close(serverfd);
-   Close(connfd);
    print_log(clientaddr, cnt, echostring);
    }
+   Close(connfd);
    return NULL;
 }
 
@@ -208,15 +205,6 @@ void Rio_writen_w(int fd, void *usrbuf, size_t n)
     return;
 }
 
-ssize_t Rio_readnb_w(rio_t *rp, void *usrbuf, size_t n)
-{
-    ssize_t rc;
-
-    if ((rc = rio_readnb(rp, usrbuf, n)) < 0)
-    printf("Rio_readnb error");
-    return rc;
-}
-
 
 /*---------------------Helper Function--------------------------*/
 /*
@@ -233,6 +221,7 @@ void log_entry(char *logstring, struct sockaddr_in *sockaddr, int size, char* ec
     char time_str[MAXLINE];
     unsigned long host;
     unsigned char a, b, c, d;
+    int port=0;
 
     /* Get the date info */
     now = time(NULL);
@@ -240,12 +229,14 @@ void log_entry(char *logstring, struct sockaddr_in *sockaddr, int size, char* ec
 
     /* Get IP & conversion */
     host = ntohl(sockaddr->sin_addr.s_addr);
+    printf("host IP: %d", host);
     a = host >> 24;
     b = (host >> 16) & 0xff;
     c = (host >> 8) & 0xff;
     d = host & 0xff;
+    port = ntohs(sockaddr->sin_port);
 
-    sprintf(logstring, "%s: %d.%d.%d.%d \n", time_str, a, b, c, d);
+    sprintf(logstring, "%s: %d.%d.%d.%d %d %d %s", time_str, a, b, c, d, port, size, echostring);
 }
 
 /*
@@ -253,7 +244,7 @@ void log_entry(char *logstring, struct sockaddr_in *sockaddr, int size, char* ec
  */
 void print_log(struct sockaddr_in *sockaddr, int size, char *echostring)
 {
-    char *logstring[MAXLINE];
+    char logstring[MAXLINE];
     log_entry(logstring, sockaddr, size, echostring);
     P(&sem_log);
     fprintf(logfile, logstring);
