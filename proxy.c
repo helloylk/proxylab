@@ -113,9 +113,10 @@ void *process_request(void* vargp){
    /* Readinit client and get the request */
    Rio_readinitb(&rio_client, connfd);
    n = Rio_readlineb_w(&rio_client, buf, MAX);
-   Rio_writen_w(connfd, buf, n);
   
-   /* Get argm from client's request */
+   sscanf(buf, "%s %d", &hostname, &port);
+   strncpy(echostring, buf);
+   /* Get argm from client's request 
    token = strtok(buf, " ");
    while (token != NULL) {
 	switch (cnt++){
@@ -147,8 +148,7 @@ void *process_request(void* vargp){
   /* Read response from server and write to client */
   cnt=0;
   n = Rio_readlineb_w(&rio_server, echostring, MAXLINE);
-	// printf("%s\n", buf);
-	strncpy(buf,echostring,n)
+	strncpy(buf,echostring,n);
 	Rio_writen_w(connfd, buf, n);
     	cnt += n;
   
