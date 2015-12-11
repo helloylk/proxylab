@@ -102,7 +102,7 @@ void *process_request(void* vargp){
    rio_t rio_client, rio_server;
    int port, serverfd;
    int n, cnt=0;
-   char buf[MAX], hostname[MAX], leadLine[MAX], echostring[MAX];
+   char buf[MAX], hostname[MAX], echostring[MAX];
    char *token;
 	
    int connfd = *(int *)*(void **)vargp;
@@ -114,50 +114,35 @@ void *process_request(void* vargp){
    Rio_readinitb(&rio_client, connfd);
    n = Rio_readlineb_w(&rio_client, buf, MAX);
   
+   /* Get argm from client's request */
    sscanf(buf, "%s %d", &hostname, &port);
-   strncpy(echostring, buf);
-   /* Get argm from client's request 
-   token = strtok(buf, " ");
-   while (token != NULL) {
-	switch (cnt++){
-		case 0:
-	        strcpy(hostname, token);
-	        break;
-	      	case 1:
-	        port=atoi(token);
-	        break;
-	        case 2:
-	        strcpy(echostring, token);
-	        break;
-	 }
-    token = strtok(NULL, " ");
-  }
+   cnt=strlen(hostname)+strlen(itoa(port));
+   strcpy(echostring, buf+cnt);
    
-  /* Connect to the server */
-  if ((serverfd = open_clientfd_ts(hostname, port)) < 0){
-  	perror("Proxy: Server connection error");
+   /* Connect to the server */
+   if ((serverfd = open_clientfd_ts(hostname, port)) < 0){
+   	perror("Proxy: Server connection error");
   	Close(connfd);
         return NULL;
-  }
-  Rio_readinitb(&rio_server, serverfd);
+   }
+   Rio_readinitb(&rio_server, serverfd);
 
-  Rio_writen_w(serverfd, echostring, strlen(echostring));
+   Rio_writen_w(serverfd, echostring, strlen(echostring));
 
-  printf("\nRESPOND\n");
+   printf("\nRESPOND\n");
   
-  /* Read response from server and write to client */
-  cnt=0;
-  n = Rio_readlineb_w(&rio_server, echostring, MAXLINE);
+   /* Read response from server and write to client */
+   cnt=0;
+   n = Rio_readlineb_w(&rio_server, echostring, MAXLINE);
 	strncpy(buf,echostring,n);
 	Rio_writen_w(connfd, buf, n);
     	cnt += n;
   
-
-  /* Close all openfile and print log */
-  Close(serverfd);
-  Close(connfd);
-  //print_log(clientaddr, cnt);
-  return NULL;
+   /* Close all openfile and print log */
+   Close(serverfd);
+   Close(connfd);
+   //print_log(clientaddr, cnt);
+   return NULL;
 }
 
 /*
