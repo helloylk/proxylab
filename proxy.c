@@ -140,19 +140,15 @@ void *process_request(void* vargp){
    }
    Rio_readinitb(&rio_server, serverfd);
 
-  /* Write the initial header to the server */
-  sprintf(leadLine, "%s %d", hostname, port);
-  Rio_writen_w(serverfd, leadLine, strlen(leadLine));
-
   Rio_writen_w(serverfd, echostring, strlen(echostring));
 
   printf("\nRESPOND\n");
   
   /* Read response from server and write to client */
   cnt=0;
-  while((n = Rio_readlineb_w(&rio_server, buf, MAXLINE)) > 0) {
+  while((n = Rio_readlineb_w(&rio_server, echostring, MAXLINE)) > 0) {
 	// printf("%s\n", buf);
-	Rio_writen_w(connfd, buf, n);
+	Rio_writen_w(connfd, echostring, n);
     	cnt += n;
   }
 
