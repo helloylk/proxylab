@@ -23,6 +23,7 @@
 
 /* Global Variable for Semaphore */
 sem_t sem, sem_log;
+FILE *logfile
 
 /* Functions to define */
 void *process_request(void* vargp);
@@ -47,7 +48,6 @@ int main(int argc, char **argv)
     struct sockaddr_in clientaddr;
     int clientlen=sizeof(clientaddr);
     struct hostent *hp;
-    FILE *log_file;
     	
     /* Check arguments */
     if (argc != 2) {
@@ -64,7 +64,7 @@ int main(int argc, char **argv)
     /* Open listen side */
     if ((listenfd=open_listenfd(port))==-1) unix_error("Listenfd Error");
     
-    log_file = fopen(PROXY_LOG, "a");
+    logfile = fopen(PROXY_LOG, "a");
     
     while(1){
     	pthread_t tid;
@@ -261,8 +261,8 @@ void print_log(struct sockaddr_in *sockaddr, int size)
     char *logstring[MAXLINE];
     log_entry(logstring, sockaddr, size);
     P(&sem_log);
-    fprintf("PROXY_LOG", logstring);
-    fflush("PROXY_LOG");
+    fprintf(logfile, logstring);
+    fflush(logfile);
     V(&sem_log);
 }
 
