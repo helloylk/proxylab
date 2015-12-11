@@ -16,6 +16,8 @@
 /* The name of the proxy's log file */
 #define PROXY_LOG "proxy.log"
 
+#define MAX 1024
+
 /* Undefine this if you don't want debugging output */
 #define DEBUG
 
@@ -42,8 +44,10 @@ int main(int argc, char **argv)
     int port, listenfd;
     FILE *log_file;
     int *connfd;
-    void *vargp;
-    
+    void **vargp;
+    struct sockaddr_in clientaddr;
+    int clientlen=sizeof(clientaddr);
+    	
     /* Check arguments */
     if (argc != 2) {
         fprintf(stderr, "Usage: %s <port number>\n", argv[0]);
@@ -56,25 +60,32 @@ int main(int argc, char **argv)
     
     port = atoi(argv[1]);
     
+    /* Open listen side */
     if ((listenfd=open_listenfd(port))==-1) unix_error("Listenfd Error");
     
     log_file = fopen(PROXY_LOG, "a");
     
     while(1){
+    	pthread_t tid;
+    	char *client_ip;
+    	int client_port;
+    	
     	/* Malloc variables for thread-safety */
     	vargp = Malloc(2*sizeof(void *));
     	connfd = Malloc(sizeof(int));
+        
         *connfd = Accept(listenfd, (SA *)&clientaddr, &clientlen);
-
+        
         /* Prepare one vargs as an argument for Pthread_create */
         vargp[0] = connfd;
         vargp[1] = &clientaddr;
         printf("initial connfd %d at address %p\n", *connfd, connfd);
 
-        /* Get the client's network information */
+        /* Determne the domain name and IP of the client */
         hp = Gethostbyaddr((const char *)&clientaddr.sin_addr.s_addr,
           sizeof(clientaddr.sin_addr.s_addr), AF_INET);
         client_ip = inet_ntoa(clientaddr.sin_addr);
+        client_port = ntohs(clientaddr.sin_port);
         printf("Client connected to %s (%s)\n", hp->h_name, client_ip);
         Pthread_create(&tid, NULL, process_request, (void *)vargp); 
     }
@@ -86,12 +97,68 @@ int main(int argc, char **argv)
  *
  */
 void *process_request(void* vargp){
-   int connfd = *(int*)*(void*)vargp;
-   struct sockaddr_in *clientaddr = (struct sockaddr_in *)(connargs + sizeof(int));
+   rio_t rio_client, rio_server;
+   int port, serverfd;
+   int n, cnt=0;
+   char buf[MAX], hostname[MAX], leadLine[MAX];
+   char *token;
+	
+   int connfd = *(int *)*(void **)vargp;
+   struct sockaddr_in *clientaddr = (struct sockaddr_in *)(vargp + sizeof(int));
    free(vargp);
    Pthread_detach(Pthread_self());
    
-   size
+   n = Rio_readlineb_w(&rio_client, buf, MAX);
+   Rio_writen_w(connfd, buf, n);
+  
+   /* Get argm from client command */
+   token = strtok(buf, " ");
+   while (token != NULL) {
+	switch (cnt++)
+	{
+		case 0:
+	        strcpy(hostname, token);
+	        break;
+	      	case 1:
+	        strcpy(port, token);
+	        break;
+	 }
+    token = strtok(NULL, " ");
+  }
+   
+   // after a successful request, connect to the server
+   if ((serverfd = open_clientfd_ts(hostname, port)) < 0){
+   	perror("Proxy: Server connection error");
+   	Close(connfd);
+        return NULL;
+   }
+   Rio_readinitb(&rio_server, serverfd);
+
+   // Write the initial header to the server
+   sprintf(leadLine, "%s %s", hostname, port);
+   Rio_writen_w(serverfd, leadLine, strlen(leadLine)); 
+
+   while((n = Rio_readlineb_w(&rio_client, buf, MAXLINE)) > 0 && buf[0] != '\r' && buf[0] != '\n') {
+	printf("%s", buf);
+	Rio_writen_w(serverfd, buf, n);
+  }
+  Rio_writen_w(serverfd, "\r\n", 2);
+
+  printf("\nRESPOND: \n%s", leadLine);
+  
+  // Read response from server
+  cnt=0;
+  while((n = Rio_readnb_w(&rio_server, buf, MAXLINE)) > 0) {
+	// printf("%s\n", buf);
+	Rio_writen_w(connfd, buf, n);
+    	cnt += n;
+  }
+
+  /* Close all openfile and print log */
+  Close(serverfd);
+  Close(connfd);
+  //print_log(clientaddr, uri, totalByteCount);
+  return NULL;
 }
 
 /*
@@ -124,6 +191,8 @@ ssize_t Rio_readn_w(int fd, void *ptr, size_t nbytes)
     n=0;
     }
     return n;
+    
+    
 }
 
 /*
