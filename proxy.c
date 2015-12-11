@@ -33,8 +33,8 @@ void Rio_writen_w(int fd, void *usrbuf, size_t n);
 
 /* Helper Function */
 int parse_uri(char *uri, char *hostname, char *pathname, int *port);
-void log_entry(char *logstring, struct sockaddr_in *sockaddr, char *uri, int size);
-void print_log(struct sockaddr_in *sockaddr, char *uri, int size);
+void log_entry(char *logstring, struct sockaddr_in *sockaddr, int size);
+void print_log(struct sockaddr_in *sockaddr, int size);
 
 /*
  * main - Main routine for the proxy program
@@ -46,7 +46,8 @@ int main(int argc, char **argv)
     void **vargp;
     struct sockaddr_in clientaddr;
     int clientlen=sizeof(clientaddr);
-    struct hostent *hp
+    struct hostent *hp;
+    FILE *log_file;
     	
     /* Check arguments */
     if (argc != 2) {
@@ -126,7 +127,7 @@ void *process_request(void* vargp){
   }
    
    // after a successful request, connect to the server
-   if ((serverfd = open_clientfd_ts(hostname, port, sem)) < 0){
+   if ((serverfd = open_clientfd_ts(hostname, port, *sem)) < 0){
    	perror("Proxy: Server connection error");
    	Close(connfd);
         return NULL;
@@ -156,7 +157,7 @@ void *process_request(void* vargp){
   /* Close all openfile and print log */
   Close(serverfd);
   Close(connfd);
-  //print_log(clientaddr, uri, totalByteCount);
+  //print_log(clientaddr, cnt);
   return NULL;
 }
 
@@ -226,51 +227,6 @@ void Rio_writen_w(int fd, void *usrbuf, size_t n)
 
 /*---------------------Helper Function--------------------------*/
 /*
- * parse_uri - URI parser
- *
- * Given a URI from an HTTP proxy GET request (i.e., a URL), extract
- * the host name, path name, and port.  The memory for hostname and
- * pathname must already be allocated and should be at least MAXLINE
- * bytes. Return -1 if there are any problems.
- */
-int parse_uri(char *uri, char *hostname, char *pathname, int *port)
-{
-    char *hostbegin;
-    char *hostend;
-    char *pathbegin;
-    int len;
-
-    if (strncasecmp(uri, "http://", 7) != 0) {
-	hostname[0] = '\0';
-	return -1;
-    }
-
-    /* Extract the host name */
-    hostbegin = uri + 7;
-    hostend = strpbrk(hostbegin, " :/\r\n\0");
-    len = hostend - hostbegin;
-    strncpy(hostname, hostbegin, len);
-    hostname[len] = '\0';
-
-    /* Extract the port number */
-    *port = 80; /* default */
-    if (*hostend == ':')
-	*port = atoi(hostend + 1);
-
-    /* Extract the path */
-    pathbegin = strchr(hostbegin, '/');
-    if (pathbegin == NULL) {
-	pathname[0] = '\0';
-    }
-    else {
-	pathbegin++;
-	strcpy(pathname, pathbegin);
-    }
-
-    return 0;
-}
-
-/*
  * log_entry - Set the log file entry as directed
  * "date: clientIP clientPort size echostring"
  * 1. Get the date info in correct form
@@ -302,10 +258,10 @@ void log_entry(char *logstring, struct sockaddr_in *sockaddr, int size)
 /*
  * print_log - print to proxy.log
  */
-void print_log(struct sockaddr_in *sockaddr, char *uri, int size)
+void print_log(struct sockaddr_in *sockaddr, int size)
 {
     char *logstring[MAXLINE];
-    log_entry(logstring, sockaddr, uri, size);
+    log_entry(logstring, sockaddr, size);
     P(&sem_log);
     fprintf(PROXY_LOG, logstring);
     fflush(PROXY_LOG);
