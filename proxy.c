@@ -35,7 +35,6 @@ void Rio_writen_w(int fd, void *usrbuf, size_t n);
 ssize_t Rio_readnb_w(rio_t *rp, void *usrbuf, size_t n);
 
 /* Helper Function */
-int parse_uri(char *uri, char *hostname, char *pathname, int *port);
 void log_entry(char *logstring, struct sockaddr_in *sockaddr, int size);
 void print_log(struct sockaddr_in *sockaddr, int size);
 
@@ -141,9 +140,9 @@ void *process_request(void* vargp){
    }
    Rio_readinitb(&rio_server, serverfd);
 
-   /* Write the initial header to the server
-   sprintf(leadLine, "%s %d", hostname, port);
-   Rio_writen_w(serverfd, leadLine, strlen(leadLine)); */
+  /* Write the initial header to the server */
+  sprintf(leadLine, "%s %d", hostname, port);
+  Rio_writen_w(serverfd, leadLine, strlen(leadLine));
 
   Rio_writen_w(serverfd, echostring, strlen(echostring));
 
