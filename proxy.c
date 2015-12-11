@@ -61,7 +61,7 @@ int main(int argc, char **argv)
     sem_init(&sem, 0, 1);
     sem_init(&sem_log, 0, 1);
     
-    port = atoi(argv[1]);
+    port = atoi(argv[1]); 
     
     /* Open listen side */
     if ((listenfd=open_listenfd(port))==-1) unix_error("Listenfd Error");
