@@ -132,13 +132,13 @@ void *process_request(void* vargp){
     token = strtok(NULL, " ");
   }
    
-   /* Connect to the server */
-   if ((serverfd = open_clientfd_ts(hostname, port)) < 0){
-   	perror("Proxy: Server connection error");
-   	Close(connfd);
+  /* Connect to the server */
+  if ((serverfd = open_clientfd_ts(hostname, port)) < 0){
+  	perror("Proxy: Server connection error");
+  	Close(connfd);
         return NULL;
-   }
-   Rio_readinitb(&rio_server, serverfd);
+  }
+  Rio_readinitb(&rio_server, serverfd);
 
   Rio_writen_w(serverfd, echostring, strlen(echostring));
 
@@ -146,11 +146,12 @@ void *process_request(void* vargp){
   
   /* Read response from server and write to client */
   cnt=0;
-  while((n = Rio_readlineb_w(&rio_server, echostring, MAXLINE)) > 0) {
+  n = Rio_readlineb_w(&rio_server, echostring, MAXLINE);
 	// printf("%s\n", buf);
-	Rio_writen_w(connfd, echostring, n);
+	strncpy(buf,echostring,n)
+	Rio_writen_w(connfd, buf, n);
     	cnt += n;
-  }
+  
 
   /* Close all openfile and print log */
   Close(serverfd);
