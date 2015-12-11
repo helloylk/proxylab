@@ -35,8 +35,8 @@ void Rio_writen_w(int fd, void *usrbuf, size_t n);
 ssize_t Rio_readnb_w(rio_t *rp, void *usrbuf, size_t n);
 
 /* Helper Function */
-void log_entry(char *logstring, struct sockaddr_in *sockaddr, int size);
-void print_log(struct sockaddr_in *sockaddr, int size);
+void log_entry(char *logstring, struct sockaddr_in *sockaddr, int size, char *echostring);
+void print_log(struct sockaddr_in *sockaddr, int size, char *echostring);
 
 /*
  * main - Main routine for the proxy program
@@ -102,7 +102,7 @@ void *process_request(void* vargp){
    rio_t rio_client, rio_server;
    int port, serverfd;
    int n, cnt=0;
-   char buf[MAX], hostname[MAX], echostring[MAX];
+   char buf[MAX], hostname[MAX], portarr[MAX], echostring[MAX];
    char *token;
 	
    int connfd = *(int *)*(void **)vargp;
@@ -112,11 +112,12 @@ void *process_request(void* vargp){
    
    /* Readinit client and get the request */
    Rio_readinitb(&rio_client, connfd);
-   n = Rio_readlineb_w(&rio_client, buf, MAX);
+   while ((n = Rio_readlineb_w(&rio_client, buf, MAX))>0){
   
    /* Get argm from client's request */
-   sscanf(buf, "%s %d", &hostname, &port);
-   cnt=strlen(hostname)+strlen(itoa(port));
+   sscanf(buf, "%s %s", &hostname, &portarr);
+   cnt=strlen(hostname)+strlen(portarr)+2;
+   port=atoi(portarr);
    strcpy(echostring, buf+cnt);
    
    /* Connect to the server */
@@ -133,15 +134,15 @@ void *process_request(void* vargp){
   
    /* Read response from server and write to client */
    cnt=0;
-   n = Rio_readlineb_w(&rio_server, echostring, MAXLINE);
-	strncpy(buf,echostring,n);
-	Rio_writen_w(connfd, buf, n);
+   n = Rio_readlineb_w(&rio_server, echostring, MAXLINE)) > 0
+	Rio_writen_w(connfd, echostring, n);
     	cnt += n;
-  
+    	
    /* Close all openfile and print log */
    Close(serverfd);
    Close(connfd);
-   //print_log(clientaddr, cnt);
+   print_log(clientaddr, cnt, echostring);
+   }
    return NULL;
 }
 
@@ -226,7 +227,7 @@ ssize_t Rio_readnb_w(rio_t *rp, void *usrbuf, size_t n)
  *    because inet ntoa is a thread-unsafe function
  * 3. Get clientport, size, echostring
  */
-void log_entry(char *logstring, struct sockaddr_in *sockaddr, int size)
+void log_entry(char *logstring, struct sockaddr_in *sockaddr, int size, char* echostring)
 {
     time_t now;
     char time_str[MAXLINE];
@@ -250,10 +251,10 @@ void log_entry(char *logstring, struct sockaddr_in *sockaddr, int size)
 /*
  * print_log - print to proxy.log
  */
-void print_log(struct sockaddr_in *sockaddr, int size)
+void print_log(struct sockaddr_in *sockaddr, int size, char *echostring)
 {
     char *logstring[MAXLINE];
-    log_entry(logstring, sockaddr, size);
+    log_entry(logstring, sockaddr, size, echostring);
     P(&sem_log);
     fprintf(logfile, logstring);
     fflush(logfile);
